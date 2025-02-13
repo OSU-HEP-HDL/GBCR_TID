@@ -5,18 +5,21 @@ import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 usbPort = "/dev/ttyACM1"
-session = { 0x4F: { 64:[0x23], 32:[0x22] },
-            0x4B: { 128:[0x23, 0x20] },
-            0x4E: { 4:[0x23, 0x20] },
-            0x4D: { 8:[0x23, 0x20] }
+
+ps1, ps2, ps3, ps4 = 0x4F, 0x4B, 0x4E, 0x4D
+mux2, mux3, mux5, mux6, mux7 = 0b00000100, 0b00001000, 0b00100000, 0b01000000, 0b10000000 
+session = { ps1: { mux6:[0x23], mux5:[0x22] },
+            ps2: { mux7:[0x23, 0x20] },
+            ps3: { mux2:[0x23, 0x20] },
+            ps4: { mux3:[0x23, 0x20] }
            }
 
 channelMap = {2:2, 3:4, 4:5, 5:6, 6:3, 7:1}
 r_sense = 0.1
 
-url = ""
-token = ""
-org = ""
+url, token, org = "", "", ""
+#token = ""
+#org = ""
 
 def getFileName(saveFiles, thisPS):
     fileName = str(hex(thisPS))+"_"
@@ -219,4 +222,4 @@ def readENV():
         
 if __name__ == "__main__":
     readENV()
-    runStudy()
+    #runStudy()
