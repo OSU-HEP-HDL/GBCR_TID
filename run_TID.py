@@ -7,13 +7,14 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 usbPort = "/dev/ttyACM1"
 
 ps1, ps2, ps3, ps4 = 0x4F, 0x4B, 0x4E, 0x4D
-mux2, mux3, mux5, mux6, mux7 = 0b00000100, 0b00001000, 0b00100000, 0b01000000, 0b10000000 
+muxAdr = 0x70
+mux2, mux3, mux5, mux6, mux7 = 3, 4, 6, 7, 8
+
 session = { ps1: { mux6:[0x23], mux5:[0x22] },
             ps2: { mux7:[0x23, 0x20] },
             ps3: { mux2:[0x23, 0x20] },
             ps4: { mux3:[0x23, 0x20] }
            }
-
 channelMap = {2:2, 3:4, 4:5, 5:6, 6:3, 7:1}
 r_sense = 0.1
 
@@ -48,7 +49,7 @@ def writeRegisters(iss, thisPS, thisMux, thisChip):
 
     #Turn on the power supply
     try:
-        iss.i2c.write(thisPS, 0x6, [17, 17,16])
+        iss.i2c.write(thisPS, 0x6, [17, 17, 16])
     except:
         return False
     time.sleep(0.25)
@@ -157,50 +158,6 @@ def recordIfWritten(chipWritten):
 
     outFile.write(writeString)
     outFile.close()
-    
-def runStudy():
-    count = 1
-    saveFiles = []
-
-    endSession = ""
-    while(endSession!="y"):
-        waitTime = 300
-        if(count>100):
-            waitTime = 1200
-
-        powerSupplies = session.keys()
-        for thisPS in powerSupplies:
-            #Turn on the USB-ISS module
-            iss = UsbIss(); iss.open(usbPort)
-            iss.setup_i2c(clock_khz=100, use_i2c_hardware=True, io1_type=None, io2_type=None)
-            
-            psData = session[thisPS]
-            muxes = session[thisPS].keys()
-            chipWritten = {}
-            for thisMux in muxes:
-                chips = psData[thisMux]
-                for thisChip in chips:
-                    muxNumber = int(math.log2(thisMux))
-                    wrote = True #writeRegisters(iss, thisPS, thisMux, thisChip)
-                    chipString = str(channelMap[muxNumber])+"_"+str(hex(thisChip))
-                    chipWritten[chipString] = wrote
-
-            print(chipWritten)
-            currents = []
-            currents = calcCurrents(iss, thisPS)
-            recordCurrents(currents, thisPS)
-            recordIfWritten(chipWritten)
-                
-            iss.close()
-            
-        try:
-            ansTime = waitTime - 5
-            endSession = inputimeout.inputimeout(prompt = "End Session (Y/N): ", timeout = ansTime).lower()
-        except:
-            endsession="n"
-
-        count+=1
-        time.sleep(5)
 
 def readENV():
     global url, token, org
@@ -219,7 +176,53 @@ def readENV():
             org = splitLine[-1].strip()
         else:
             print("Option not available")
-        
+
+def turnOnMuxChannel(thisMux):
+    print(thisMux)
+    commands = str(muxAdr).zfill(4)+str(thisMux).zfill(4)
+    print(commands)
+            
+def runStudy():
+    count = 1
+    endSession = ""
+    waitTime = 300
+
+    while(endSession!="y"):
+        if( (count>3) and (waitTime == 300)):
+            waitTime = 1200
+            
+        powerSupplies = session.keys()
+        for thisPS in powerSupplies:
+            muxes = session[thisPS].keys()
+            for thisMux in muxes:
+                turnOnMuxChannel(thisMux)
+        #     chipWritten = {}
+        #     for thisMux in muxes:
+        #         chips = psData[thisMux]
+        #         for thisChip in chips:
+        #             muxNumber = int(math.log2(thisMux))
+        #             wrote = True #writeRegisters(iss, thisPS, thisMux, thisChip)
+        #             chipString = str(channelMap[muxNumber])+"_"+str(hex(thisChip))
+        #             chipWritten[chipString] = wrote
+
+        #     print(chipWritten)
+        #     currents = []
+        #     currents = calcCurrents(iss, thisPS)
+        #     recordCurrents(currents, thisPS)
+        #     recordIfWritten(chipWritten)
+                
+        #     iss.close()
+            
+        try:
+            ansTime = waitTime - 5
+            endSession = inputimeout.inputimeout(prompt = "End Session (Y/N): ", timeout = ansTime).lower()
+        except:
+            endsession="n"
+
+        count+=1
+        if(endSession!="y"):
+            time.sleep(5)
+            
 if __name__ == "__main__":
     readENV()
-    #runStudy()
+    runStudy()

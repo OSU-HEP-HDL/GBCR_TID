@@ -1,8 +1,7 @@
 #include <Wire.h>
 
-int chip;
 int regs[32] = {8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 23, 249, 100, 23, 249, 100, 33, 66};
-int sent;
+int receivedData[5] = { -50, -50, -50, -50, -50 };
 
 void setup() { 
   Serial.begin(115200); 
@@ -13,30 +12,45 @@ void setup() {
   Wire.setWireTimeout(500000);
 } 
 
-int initiateCommunication( String val ){
-  String message = "Acom - "+val;
-  Serial.println(message);
-  delay(100);
-  while(!Serial.available());
-  
-  int test = Serial.readString().toInt();
-  while(test!="Pcom"){
-    Serial.println(test);
-    test = initiateCommunication( val );
+//int initiateCommunication( String val ){
+//  String message = "Acom - "+val;
+//  Serial.println(message);
+//  delay(100);
+//  
+//  
+//  int test = Serial.readString().toInt();
+//  while(test!="Pcom"){
+//    Serial.println(test);
+//    test = initiateCommunication( val );
+//  }
+//  return test;
+//}
+
+void splitReceived( int received ){
+  Serial.println(received);
+  int index = 0;
+  while( received>0 ){
+    int thisCode = received%10000;
+    receivedData[index] = thisCode;
+    received /= 10000;
+    Serial.println(received);
   }
-  return test;
+}
+
+int awaitForMessage(){
+  while( !Serial.available() );
+  int received = Serial.readString().toInt();
+  splitReceived( received );
+  
+  return received;
 }
 
 void loop() {
+  int received = awaitForMessage();
 
-  int commWorking = initiateCommunication("Test");
-  Serial.println("Here");
-  
-  
-  
-  //int test = Serial.readString().toInt();
-  //Serial.println(test);
-  //chip = Serial.readString().toInt();
+  for(int i=0; i<5; i+=1){
+    Serial.println(receivedData[i]);
+  }
 
   //Wire.beginTransmission(chip);
   //for(int iReg=0; iReg<33; ++iReg){
@@ -48,4 +62,4 @@ void loop() {
 
   //delay(100);
   //Serial.read();
-} 
+}
