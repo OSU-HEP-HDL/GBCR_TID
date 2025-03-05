@@ -4,6 +4,8 @@ import math, time, inputimeout, datetime
 import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+import serial
+
 usbPort = "/dev/ttyACM1"
 
 ps1, ps2, ps3, ps4 = 0x4F, 0x4B, 0x4E, 0x4D
@@ -21,6 +23,8 @@ r_sense = 0.1
 url, token, org = "", "", ""
 #token = ""
 #org = ""
+
+arduino = serial.Serial(port="/dev/ttyACM0", baudrate=1000000, timeout = 0.1)
 
 def getFileName(saveFiles, thisPS):
     fileName = str(hex(thisPS))+"_"
@@ -177,10 +181,24 @@ def readENV():
         else:
             print("Option not available")
 
+def waitContinue():
+    received = False
+    while(not received):
+        time.sleep(1)
+        message = arduino.readline().decode('utf-8')
+        print(message)
+
+        if(message=="Acom_continue"):
+            arduino.write( bytes("1", 'utf-8') )
+            received = True
+        else:
+            arduino.write( bytes("0", 'utf-8') )
+
 def turnOnMuxChannel(thisMux):
     print(thisMux)
-    commands = str(muxAdr).zfill(4)+str(thisMux).zfill(4)
-    print(commands)
+    commands = "5555"+str(thisMux).zfill(4)+str(thisMux).zfill(4)+"5555"
+    arduino.write( bytes(commands, "utf-8") )
+    waitContinue()
             
 def runStudy():
     count = 1
@@ -195,6 +213,7 @@ def runStudy():
         for thisPS in powerSupplies:
             muxes = session[thisPS].keys()
             for thisMux in muxes:
+                print("Starting Loop")
                 turnOnMuxChannel(thisMux)
         #     chipWritten = {}
         #     for thisMux in muxes:
