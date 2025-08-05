@@ -101,16 +101,30 @@ void runCom(String com){
 
   switch(commands[0]){
     case 1111: //Turn on Power Supply
+      // Do some initialization
+      Wire.beginTransmission(commands[1]);        
+      Wire.write(0x01); Wire.write(0xF8);         //! Enables all channels
+      Wire.endTransmission();
       Wire.beginTransmission(commands[1]);
-      Wire.write(0x06); Wire.write(17);
+      Wire.write(0x06); Wire.write(0x00);          //! Sets registers to default starting values.
+      Wire.endTransmission();
+      Wire.beginTransmission(commands[1]);
+      Wire.write(0x07); Wire.write(0x00);
+      Wire.endTransmission();
+      Wire.beginTransmission(commands[1]);
+      Wire.write(0x08); Wire.write(0x10);           //! Configures LTC2991 for Repeated Acquisition mode
+      Wire.endTransmission();
+
+      Wire.beginTransmission(commands[1]);
+      Wire.write(0x06); Wire.write(0x11);
       w[0] = Wire.endTransmission();
 
       Wire.beginTransmission(commands[1]);
-      Wire.write(0x07); Wire.write(17);
+      Wire.write(0x07); Wire.write(0x11);
       w[1] = Wire.endTransmission();
 
       Wire.beginTransmission(commands[1]);
-      Wire.write(0x08); Wire.write(16);
+      Wire.write(0x08); Wire.write(0x10);
       w[2] = Wire.endTransmission();
 
       if(debug){ acom_sendCom("PS turned on: "+String(w[0])+", "+String(w[1])+", "+String(w[2]) ); }
