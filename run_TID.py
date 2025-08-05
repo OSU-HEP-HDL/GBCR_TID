@@ -186,7 +186,7 @@ def waitContinue():
     while(not received):
         time.sleep(1)
         message = arduino.readline().decode('utf-8')
-        print(message)
+        #print(message)
 
         if(message=="Acom_continue"):
             arduino.write( bytes("1", 'utf-8') )

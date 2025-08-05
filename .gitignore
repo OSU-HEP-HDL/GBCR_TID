@@ -4,6 +4,8 @@ chipsWritten*
 __pycache__/
 *.py[cod]
 *$py.class
+*.py~
+*.ino~
 
 # C extensions
 *.so
