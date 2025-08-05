@@ -1,6 +1,6 @@
 import serial, time
 
-usbPort = "/dev/ttyACM0"
+usbPort = "/dev/ttyACM1"
 arduino = serial.Serial(port=usbPort, baudrate=115200, timeout=5)
 
 ps1, ps2, ps3, ps4 = 0x4F, 0x4B, 0x4E, 0x4D
