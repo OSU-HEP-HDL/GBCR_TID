@@ -121,7 +121,7 @@ int readCurrent(int addr, int regs, float &current )
       current = convertADCCurrent(data);
       return (0) ;
     }
-    else return (1);
+    else Serial.println("Data not Valid");
     
 }
 
@@ -143,7 +143,7 @@ int readTimeout(int addr, int regs, int &mydata)
         Serial.println("Timeout waiting for status");
         return(1);
       }
-      delay(1);
+      delay(5);
   }
   
     //read to get rid of stale data

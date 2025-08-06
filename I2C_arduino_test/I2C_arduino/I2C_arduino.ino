@@ -4,6 +4,7 @@
 bool debug = true;
 
 byte regs[32] = {8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 23, 249, 100, 23, 249, 100, 33, 66};
+int regsADC[]={0x0C, 0x10, 0x14,0x18};
 
 void setup() { 
   // Initialize Serial communication
@@ -111,8 +112,8 @@ void runCom(String com){
      digitalWrite(13, HIGH);
    for (int i=0; i<4;i++)
    {
-     if(readCurrent(commands[1], regs[i], current));  
-      acom_sendCom("Error datat not valid from register "+String(regs[i])+" on device "+String(commands[1]));
+     if(readCurrent(commands[1], regsADC[i], current));  
+      acom_sendCom("Error data not valid from register "+String(regsADC[i], HEX)+" on device "+String(commands[1]));
      result += String(current);
      if (i < 3) result += ", ";
    }
