@@ -3,17 +3,17 @@
 
 bool debug = true;
 
-
 byte regs[32] = {8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 23, 249, 100, 23, 249, 100, 33, 66};
 
 void setup() { 
+  // Initialize Serial communication
   Serial.begin(115200); 
   Serial.setTimeout(250);
-  
+//  Initialize I2C communication
   Wire.begin();
   Wire.setClock(100000);
   Wire.setWireTimeout(3000, 1);
-
+  // Set pin 13 as output for mux reset
   pinMode(13, OUTPUT);
 }
 
@@ -74,8 +74,18 @@ void runCom(String com){
     case 4444:
       digitalWrite(13, LOW);
       digitalWrite(13, HIGH);
-      //readPS(commands[1]);
-//      readPS(0x4f);
+
+    float current=0; 
+    String result = "Data: ";
+    for (int i=0; i<4;i++)
+    {
+      readCurrent(commands[1], regs[i], current);  
+      result += String(current);
+      if (i < 3) result += ", ";
+    }
+    acom_sendCom(result);
+    
+
       acom_sendCom("Done");
     default:
       break;
