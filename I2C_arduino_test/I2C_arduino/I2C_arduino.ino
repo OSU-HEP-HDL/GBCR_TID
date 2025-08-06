@@ -43,13 +43,13 @@ void runCom(String com){
 
   switch(commands[0]){
     case 1111: //Turn on Power Supply
-      if(init(commands[1],1))
+    acom_sendCom("PSU Address: " + String(commands[1],HEX));
+      int addr [1] = {commands[1]};
+       if(init(addr,1))
       {
-        Serial.println("Error during init");
+        acom_sendCom("Error during init");
         return;
       }
-      else acom_sendCom("Done");
-      };
       break;
     case 2222: //Turn on Mux channel
       Wire.beginTransmission(0x70);
@@ -106,5 +106,3 @@ void loop() {
   acom_receiveCom();
   //digitalWrite(13, LOW);
 }
-
-

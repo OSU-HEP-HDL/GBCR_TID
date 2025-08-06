@@ -90,7 +90,7 @@ float convertADCCurrent(int data)
 
 bool init(int dev[], int len)
 {
-  bool error;
+  bool error=0;
   for(int i=0; i<len; i++)
   {
     Serial.print("Init: ");
