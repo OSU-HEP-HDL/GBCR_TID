@@ -84,7 +84,6 @@ void runCom(String com)
     // acom_sendCom("Entering case 1111");
     // acom_sendCom("PSU Address: " + String(commands[1],HEX));
     {
-
       if (init(addr, 1))
       {
         acom_sendCom("Error during init");
@@ -134,9 +133,9 @@ void runCom(String com)
     for (int i = 0; i < 4; i++)
     {
       if (readCurrent(commands[1], regsADC[i], current))
-        acom_sendCom("Error data not valid from register " + String(regsADC[i], HEX) + " on device " + String(commands[1]));  
-      else    
-      result += String(current);
+        acom_sendCom("Error data not valid from register " + String(regsADC[i], HEX) + " on device " + String(commands[1]));
+      else
+        result += String(current, 4);
       if (i < 3)
         result += ", ";
     }
