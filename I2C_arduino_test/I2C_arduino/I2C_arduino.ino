@@ -22,43 +22,77 @@ void setup() {
 void splitCom(String com, int *commands){
   int subIndex = 0;
   int index = 0;
+  
+  // Trim whitespace and newlines
+  com.trim();
   int rLength = com.length();
 
-  while( subIndex < rLength ){
-    String thisCode = com.substring(subIndex, subIndex+4);
-    subIndex = subIndex + 4;
+  // Initialize commands array to 0
+  for(int i = 0; i < 5; i++) {
+    commands[i] = 0;
+  }
 
-    commands[index] = thisCode.toInt();
-    index = index+1;
+  // Parse in 4-character chunks
+  while( subIndex < rLength && index < 5 ){
+    if(subIndex + 4 <= rLength) {
+      String thisCode = com.substring(subIndex, subIndex+4);
+      commands[index] = thisCode.toInt();
+      subIndex = subIndex + 4;
+      index = index + 1;
+    } else {
+      // Handle remaining characters if less than 4
+      if(subIndex < rLength) {
+        String thisCode = com.substring(subIndex);
+        commands[index] = thisCode.toInt();
+      }
+      break;
+    }
   }
 }
 
 void runCom(String com){
   int commands[5];
+  
+  // Debug: print the received command
+  // acom_sendCom("Received command: '" + com + "' Length: " + String(com.length()));
+  
   splitCom(com, commands);
+  
+  // Debug: print the parsed commands
+  // acom_sendCom("Parsed commands[0]: " + String(commands[0]));
+  // acom_sendCom("Parsed commands[1]: " + String(commands[1]));
+  // acom_sendCom("Parsed commands[2]: " + String(commands[2]));
+  // acom_sendCom("About to enter switch with commands[0] = " + String(commands[0]));
 
   int w[3] = {-1, -1, -1};
   int muxOutput = -1;
   int regOutput = -1;
-
+  String result = String("Data: ");
+  float current=0; 
   switch(commands[0]){
     case 1111: //Turn on Power Supply
-    acom_sendCom("PSU Address: " + String(commands[1],HEX));
-      int addr [1] = {commands[1]};
-       if(init(addr,1))
+      // acom_sendCom("Entering case 1111");
+      // acom_sendCom("PSU Address: " + String(commands[1],HEX));
       {
-        acom_sendCom("Error during init");
-        return;
+        int addr[1] = {commands[1]};
+        if(init(addr,1))
+        {
+          acom_sendCom("Error during init");
+          return;
+        }
       }
       break;
     case 2222: //Turn on Mux channel
+      // acom_sendCom("Entering case 2222");
       Wire.beginTransmission(0x70);
-      Wire.write(255); Wire.write(1 << commands[1]);
+      Wire.write(255); 
+      Wire.write(1 << commands[1]);
       muxOutput = Wire.endTransmission();
-
+      // acom_sendCom("Mux operation completed");
       if(debug){ acom_sendCom( "Mux Set: "+String(muxOutput) ); }
       break;
     case 3333: //Write registers to chips
+      // acom_sendCom("Entering case 3333");
       for(int iReg = 0; iReg<32; iReg++){
         Wire.beginTransmission(commands[1]);
         delay(2);
@@ -67,29 +101,30 @@ void runCom(String com){
         Wire.write(regs[iReg]);
         delay(2);
         regOutput = Wire.endTransmission();
-
         if(debug){ acom_sendCom("Register Set ("+String(iReg)+"): "+String(regOutput) );}
       }
       break;
     case 4444:
-      digitalWrite(13, LOW);
-      digitalWrite(13, HIGH);
+      // acom_sendCom("Entering case 4444");
 
-    float current=0; 
-    String result = "Data: ";
-    for (int i=0; i<4;i++)
-    {
-      readCurrent(commands[1], regs[i], current);  
-      result += String(current);
-      if (i < 3) result += ", ";
-    }
+     digitalWrite(13, LOW);
+     digitalWrite(13, HIGH);
+   for (int i=0; i<4;i++)
+   {
+     if(readCurrent(commands[1], regs[i], current));  
+      acom_sendCom("Error datat not valid from register "+String(regs[i])+" on device "+String(commands[1]));
+     result += String(current);
+     if (i < 3) result += ", ";
+   }
     acom_sendCom(result);
-    
 
       acom_sendCom("Done");
+      break;
     default:
+      acom_sendCom("Invalid input - commands[0] was: " + String(commands[0]));
       break;
   }
+  // acom_sendCom("Exited switch statement");
 }
 
 bool acom_sendCom( String message ){

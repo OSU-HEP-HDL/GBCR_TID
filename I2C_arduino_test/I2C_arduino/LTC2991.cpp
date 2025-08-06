@@ -121,7 +121,7 @@ int readCurrent(int addr, int regs, float &current )
       current = convertADCCurrent(data);
       return (0) ;
     }
-    else Serial.println("Data not Valid");
+    else return (1);
     
 }
 
