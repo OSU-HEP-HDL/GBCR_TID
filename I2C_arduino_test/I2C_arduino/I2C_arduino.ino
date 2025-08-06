@@ -4,13 +4,14 @@
 bool debug = true;
 
 byte regs[32] = {8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 23, 249, 100, 23, 249, 100, 33, 66};
-int regsADC[]={0x0C, 0x10, 0x14,0x18};
+int regsADC[] = {0x0C, 0x10, 0x14, 0x18};
 
-void setup() { 
+void setup()
+{
   // Initialize Serial communication
-  Serial.begin(115200); 
+  Serial.begin(115200);
   Serial.setTimeout(250);
-//  Initialize I2C communication
+  //  Initialize I2C communication
   Wire.begin();
   Wire.setClock(100000);
   Wire.setWireTimeout(3000, 1);
@@ -18,31 +19,36 @@ void setup() {
   pinMode(13, OUTPUT);
 }
 
-
-
-void splitCom(String com, int *commands){
+void splitCom(String com, int *commands)
+{
   int subIndex = 0;
   int index = 0;
-  
+
   // Trim whitespace and newlines
   com.trim();
   int rLength = com.length();
 
   // Initialize commands array to 0
-  for(int i = 0; i < 5; i++) {
+  for (int i = 0; i < 5; i++)
+  {
     commands[i] = 0;
   }
 
   // Parse in 4-character chunks
-  while( subIndex < rLength && index < 5 ){
-    if(subIndex + 4 <= rLength) {
-      String thisCode = com.substring(subIndex, subIndex+4);
+  while (subIndex < rLength && index < 5)
+  {
+    if (subIndex + 4 <= rLength)
+    {
+      String thisCode = com.substring(subIndex, subIndex + 4);
       commands[index] = thisCode.toInt();
       subIndex = subIndex + 4;
       index = index + 1;
-    } else {
+    }
+    else
+    {
       // Handle remaining characters if less than 4
-      if(subIndex < rLength) {
+      if (subIndex < rLength)
+      {
         String thisCode = com.substring(subIndex);
         commands[index] = thisCode.toInt();
       }
@@ -51,14 +57,15 @@ void splitCom(String com, int *commands){
   }
 }
 
-void runCom(String com){
+void runCom(String com)
+{
   int commands[5];
-  
+
   // Debug: print the received command
   // acom_sendCom("Received command: '" + com + "' Length: " + String(com.length()));
-  
+
   splitCom(com, commands);
-  
+
   // Debug: print the parsed commands
   // acom_sendCom("Parsed commands[0]: " + String(commands[0]));
   // acom_sendCom("Parsed commands[1]: " + String(commands[1]));
@@ -69,86 +76,108 @@ void runCom(String com){
   int muxOutput = -1;
   int regOutput = -1;
   String result = String("Data: ");
-  float current=0; 
-  switch(commands[0]){
-    case 1111: //Turn on Power Supply
-      // acom_sendCom("Entering case 1111");
-      // acom_sendCom("PSU Address: " + String(commands[1],HEX));
-      {
-        int addr[1] = {commands[1]};
-        if(init(addr,1))
-        {
-          acom_sendCom("Error during init");
-          return;
-        }
-      }
-      break;
-    case 2222: //Turn on Mux channel
-      // acom_sendCom("Entering case 2222");
-      Wire.beginTransmission(0x70);
-      Wire.write(255); 
-      Wire.write(1 << commands[1]);
-      muxOutput = Wire.endTransmission();
-      // acom_sendCom("Mux operation completed");
-      if(debug){ acom_sendCom( "Mux Set: "+String(muxOutput) ); }
-      break;
-    case 3333: //Write registers to chips
-      // acom_sendCom("Entering case 3333");
-      for(int iReg = 0; iReg<32; iReg++){
-        Wire.beginTransmission(commands[1]);
-        delay(2);
-        Wire.write(iReg); 
-        delay(2);
-        Wire.write(regs[iReg]);
-        delay(2);
-        regOutput = Wire.endTransmission();
-        if(debug){ acom_sendCom("Register Set ("+String(iReg)+"): "+String(regOutput) );}
-      }
-      break;
-    case 4444:
-      // acom_sendCom("Entering case 4444");
+  float current = 0;
+  int addr[1] = {commands[1]};
+  switch (commands[0])
+  {
+  case 1111: // Turn on Power Supply
+    // acom_sendCom("Entering case 1111");
+    // acom_sendCom("PSU Address: " + String(commands[1],HEX));
+    {
 
-     digitalWrite(13, LOW);
-     digitalWrite(13, HIGH);
-   for (int i=0; i<4;i++)
-   {
-     if(readCurrent(commands[1], regsADC[i], current));  
-      acom_sendCom("Error data not valid from register "+String(regsADC[i], HEX)+" on device "+String(commands[1]));
-     result += String(current);
-     if (i < 3) result += ", ";
-   }
+      if (init(addr, 1))
+      {
+        acom_sendCom("Error during init");
+        return;
+      }
+    }
+    break;
+  case 2222: // Turn on Mux channel
+    // acom_sendCom("Entering case 2222");
+    Wire.beginTransmission(0x70);
+    Wire.write(255);
+    Wire.write(1 << commands[1]);
+    muxOutput = Wire.endTransmission();
+    // acom_sendCom("Mux operation completed");
+    if (debug)
+    {
+      acom_sendCom("Mux Set: " + String(muxOutput));
+    }
+    break;
+  case 3333: // Write registers to chips
+    // acom_sendCom("Entering case 3333");
+    for (int iReg = 0; iReg < 32; iReg++)
+    {
+      Wire.beginTransmission(commands[1]);
+      delay(2);
+      Wire.write(iReg);
+      delay(2);
+      Wire.write(regs[iReg]);
+      delay(2);
+      regOutput = Wire.endTransmission();
+      if (debug)
+      {
+        acom_sendCom("Register Set (" + String(iReg) + "): " + String(regOutput));
+      }
+    }
+    break;
+  case 4444:
+    // acom_sendCom("Entering case 4444");
+
+    digitalWrite(13, LOW);
+    digitalWrite(13, HIGH);
+    if (init(addr, 1))
+    {
+      acom_sendCom("Error during init");
+      return;
+    }
+    for (int i = 0; i < 4; i++)
+    {
+      if (readCurrent(commands[1], regsADC[i], current))
+        acom_sendCom("Error data not valid from register " + String(regsADC[i], HEX) + " on device " + String(commands[1]));  
+      else    
+      result += String(current);
+      if (i < 3)
+        result += ", ";
+    }
     acom_sendCom(result);
 
-      acom_sendCom("Done");
-      break;
-    default:
-      acom_sendCom("Invalid input - commands[0] was: " + String(commands[0]));
-      break;
+    acom_sendCom("Done");
+    break;
+  default:
+    acom_sendCom("Invalid input - commands[0] was: " + String(commands[0]));
+    break;
   }
   // acom_sendCom("Exited switch statement");
 }
 
-bool acom_sendCom( String message ){
-  delay(1000); //Wait 1 second for python to get in correct state
+bool acom_sendCom(String message)
+{
+  delay(1000); // Wait 1 second for python to get in correct state
   Serial.println(message);
 }
 
-bool acom_receiveCom(){
-  while( !Serial.available() ); //Wait to receive a command from Python
+bool acom_receiveCom()
+{
+  while (!Serial.available())
+    ; // Wait to receive a command from Python
   String heard = Serial.readString();
 
-  acom_sendCom( heard ); //Send heard command back to make sure it was correct
+  acom_sendCom(heard); // Send heard command back to make sure it was correct
 
-  while( !Serial.available() ); //Wait to receive a command from Python
+  while (!Serial.available())
+    ; // Wait to receive a command from Python
   int confirm = Serial.readString().toInt();
-  if(confirm==1){ 
+  if (confirm == 1)
+  {
     runCom(heard);
     acom_sendCom("Done");
   }
 }
 
-void loop() {
+void loop()
+{
   digitalWrite(13, HIGH);
   acom_receiveCom();
-  //digitalWrite(13, LOW);
+  // digitalWrite(13, LOW);
 }
