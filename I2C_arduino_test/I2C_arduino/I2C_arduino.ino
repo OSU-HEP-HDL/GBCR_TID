@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include<avr/wdt.h>
 
 bool debug = true;
 
@@ -16,42 +17,87 @@ void setup() {
 }
 
 void recordCurrents(int val, int thisPS){
-  int psRegs[8] = {0x02, 0x0D, 0x10, 0x11, 0x14, 0x15, 0x18, 0x19};
+  int psRegs[8] = {0x0C, 0x0D, 0x10, 0x11, 0x14, 0x15, 0x18, 0x19};
   //int regs240[4] = {0x14, 0x15, 0x18, 0x19};
   //int regs015[4] = {0x0C, 0x0D, 0x10, 0x11};
-  int data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  byte data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  String data1 = "";
+  String data2 = "";
+  String data3 = "";
+  String data4 = "";
 
-  for(int iData = 0; iData < 8; iData++){
-      Wire.beginTransmission(thisPS);
-      Wire.write(psRegs[iData]);
-      Wire.requestFrom(thisPS, 1);
-      int thisData = Wire.read();
-      Wire.endTransmission();
+ union
+  {
+    uint8_t b[2];
+    uint16_t w;
+  } myData;
+  myData.b[0]=0;
+  myData.b[1]=0;
+  int address=0x4f;
+  int reg = 0x18;
+
+  byte thisData = 0;
+
+  // throw away first data from tht LTC2991
+  Wire.beginTransmission(address);
+  Wire.write(reg);
+  Wire.endTransmission();
+  Wire.requestFrom(address, 2, true);
+  thisData = Wire.read();
+  thisData = Wire.read();
+  Wire.endTransmission();
+
+
+  Wire.beginTransmission(address);
+  Wire.write(reg);
+  Wire.endTransmission();
+  Wire.requestFrom(address, 2, true);
+  myData.b[1] = Wire.read();
+  Serial.print("B1: ");
+  Serial.println(myData.b[1],HEX);
+  myData.b[0] = Wire.read();
+  Serial.print("B0: ");
+  Serial.println(myData.b[0],HEX);
+  Wire.endTransmission();
+  uint16_t adc = myData.w;
+ 
+
+
+
+  // for(int iData = 0; iData < 8; iData++){
+  //     Wire.beginTransmission(thisPS);
+  //     Wire.write(psRegs[iData]);
+  //     Wire.requestFrom(thisPS, 1);
+  //     byte thisData = Wire.read();
+  //     Wire.endTransmission();
       
-      data[iData] = thisData;
-   }
+  //     data[iData] = thisData;
+  //  }
+  //  delay(100);
   
-   String data1 = String(data[0], BIN)+"_"+String(data[1], BIN);
-   String data2 = String(data[2], BIN)+"_"+String(data[3], BIN);
-   String data3 = String(data[4], BIN)+"_"+String(data[5], BIN);
-   String data4 = String(data[6], BIN)+"_"+String(data[7], BIN);
-
-  acom_sendCom("Data: "+data1+", "+data2+", "+data3+", "+data4);
+  //  data1 = String(data[0], BIN)+"_"+String(data[1], BIN);
+  //  data2 = String(data[2], BIN)+"_"+String(data[3], BIN);
+  //  data3 = String(data[4], BIN)+"_"+String(data[5], BIN);
+  //  data4 = String(data[6], BIN)+"_"+String(data[7], BIN);
+  // acom_sendCom("Data: "+data1+", "+data2+", "+data3+", "+data4);
+  acom_sendCom("Data:"+String(adc, BIN));
 }
+
 
 void readPS(int thisPS){
      Wire.beginTransmission(thisPS);
      Wire.write(0x01);
-     Wire.write(0xFF);
+     Wire.write(0xF8);
      int wrote = Wire.endTransmission();
 
      delay(500);
 
      int count = 0;
-     int n; int val;
+     int n; byte val;
      while(count < 10){
        Wire.beginTransmission(thisPS);
        Wire.write(0x00);
+       Wire.endTransmission();
        n = Wire.requestFrom(thisPS, 1);
        val = Wire.read();
        Wire.endTransmission();
@@ -101,6 +147,7 @@ void runCom(String com){
 
   switch(commands[0]){
     case 1111: //Turn on Power Supply
+      commands[1]=0x4F;
       // Do some initialization
       Wire.beginTransmission(commands[1]);        
       Wire.write(0x01); Wire.write(0xF8);         //! Enables all channels
@@ -139,7 +186,11 @@ void runCom(String com){
     case 3333: //Write registers to chips
       for(int iReg = 0; iReg<32; iReg++){
         Wire.beginTransmission(commands[1]);
-        Wire.write(iReg); Wire.write(regs[iReg]);
+        delay(2);
+        Wire.write(iReg); 
+        delay(2);
+        Wire.write(regs[iReg]);
+        delay(2);
         regOutput = Wire.endTransmission();
 
         if(debug){ acom_sendCom("Register Set ("+String(iReg)+"): "+String(regOutput) );}
@@ -148,7 +199,9 @@ void runCom(String com){
     case 4444:
       digitalWrite(13, LOW);
       digitalWrite(13, HIGH);
-      readPS(commands[2]);
+      //readPS(commands[1]);
+//      readPS(0x4f);
+      acom_sendCom("Done");
     default:
       break;
   }
