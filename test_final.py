@@ -1,11 +1,12 @@
 import serial, time
 
-usbPort = "/dev/ttyACM0"
+usbPort = "/dev/ttyACM1"
 arduino = serial.Serial(port=usbPort, baudrate=115200, timeout=5)
 
 ps1, ps2, ps3, ps4 = 0x4F, 0x4B, 0x4E, 0x4D
 muxAdr = 0x70
-muxCh2, muxCh3, muxCh5, muxCh6, muxCh7 = 3, 4, 6, 7, 8
+#muxCh2, muxCh3, muxCh5, muxCh6, muxCh7 = 3, 4, 6, 7, 8
+muxCh2, muxCh3, muxCh5, muxCh6, muxCh7 = 2, 3, 5, 6, 7
 
 sessionMap = { ps1: { muxCh6: [0x23], muxCh5: [0x22]},
                ps2: { muxCh7: [0x23, 0x20]},
@@ -102,7 +103,7 @@ def sendCom(comCode=-1, comDest=-1, directMessage = ""):
     comDone = False
     
     ### Send inital command
-    com = str(comCode)+str(comDest).zfill(4)+str(muxAdr).zfill(4)+str(comCode)
+    com = str(comCode)+str(comDest).zfill(4)#+str(muxAdr).zfill(4)+str(comCode)
     if(directMessage!=""):
         com = directMessage.zfill(16)
     print(f"PCom: {com}")
@@ -138,22 +139,24 @@ def runPS(thisPS):
         # if(iM > 0):
         #     arduino.close()
         #     exit()
-
-        muxSet = False
-        while(not muxSet):
-            muxSet = sendCom(comCode = 2222, comDest = thisMux)
         for iC, thisChip in enumerate(chips):
-            # regsSet = False
-            # while(not regsSet):
-            #     regsSet = sendCom(comCode = 3333, comDest = thisChip)
+            muxSet = False
+            while(not muxSet):
+                muxSet = sendCom(comCode = 2222, comDest = thisMux)
+
+            regsSet = False
+            while(not regsSet):
+                regsSet = sendCom(comCode = 3333, comDest = thisChip)
+
             currentRead = False
             while(not currentRead):
                 currentRead = sendCom(comCode = 4444, comDest = thisPS)
-                if(currentData==""):
-                    currentRead = False
-            currents = calculateCurrents()
-            currentData = ""
-            print(f"MEASURED CURRENTS FOR ({thisPS}): {currents}")
+                currentRead = True
+                # if(currentData==""):
+                #     currentRead = False
+            #currents = calculateCurrents()
+            #currentData = ""
+            #print(f"MEASURED CURRENTS FOR ({thisPS}): {currents}")
 
 def runStudy():
     sessionPSlist = sessionMap.keys()
