@@ -6,6 +6,8 @@ bool debug = true;
 byte regs[32] = {8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 8, 187, 187, 117, 23, 249, 100, 23, 249, 100, 33, 66};
 int regsADC[] = {0x0C, 0x10, 0x14, 0x18};
 
+String errors[6] = {"Success", "Data too long", "NACK on address", "NACK on data", "Other", "Timeout"};
+
 void setup()
 {
   // Initialize Serial communication
@@ -84,6 +86,7 @@ void runCom(String com)
     // acom_sendCom("Entering case 1111");
     // acom_sendCom("PSU Address: " + String(commands[1],HEX));
     {
+
       if (init(addr, 1))
       {
         acom_sendCom("Error during init");
@@ -94,7 +97,7 @@ void runCom(String com)
   case 2222: // Turn on Mux channel
     // acom_sendCom("Entering case 2222");
     Wire.beginTransmission(0x70);
-    Wire.write(255);
+//    Wire.write(255);
     Wire.write(1 << commands[1]);
     muxOutput = Wire.endTransmission();
     // acom_sendCom("Mux operation completed");
@@ -105,25 +108,37 @@ void runCom(String com)
     break;
   case 3333: // Write registers to chips
     // acom_sendCom("Entering case 3333");
+    Wire.beginTransmission(commands[1]);
+    delay(100);
+    if(Wire.endTransmission()) {
+          acom_sendCom("Not Found I2C 0x"+String(commands[1], HEX));
+          break;
+     }else{
+        acom_sendCom("Found I2C 0x"+String(commands[1], HEX));
+     }
+    
+    
     for (int iReg = 0; iReg < 32; iReg++)
     {
       Wire.beginTransmission(commands[1]);
-      delay(2);
+      delay(100);
       Wire.write(iReg);
-      delay(2);
+      delay(100);
       Wire.write(regs[iReg]);
-      delay(2);
+      delay(100);
       regOutput = Wire.endTransmission();
-      if (debug)
+      if (regOutput)
       {
-        acom_sendCom("Register Set (" + String(iReg) + "): " + String(regOutput));
+        acom_sendCom("Register Set (" + String(iReg) + "): " + errors[regOutput]);
       }
     }
+    acom_sendCom("All Registers Written!");
     break;
   case 4444:
     // acom_sendCom("Entering case 4444");
 
     digitalWrite(13, LOW);
+    delay(100);
     digitalWrite(13, HIGH);
     if (init(addr, 1))
     {
@@ -133,15 +148,15 @@ void runCom(String com)
     for (int i = 0; i < 4; i++)
     {
       if (readCurrent(commands[1], regsADC[i], current))
-        acom_sendCom("Error data not valid from register " + String(regsADC[i], HEX) + " on device " + String(commands[1]));
-      else
-        result += String(current, 4);
+        acom_sendCom("Error data not valid from register " + String(regsADC[i], HEX) + " on device " + String(commands[1]));  
+      else    
+      result += String(current, 4);
       if (i < 3)
         result += ", ";
     }
     acom_sendCom(result);
 
-    acom_sendCom("Done");
+    acom_sendCom("CDone");
     break;
   default:
     acom_sendCom("Invalid input - commands[0] was: " + String(commands[0]));
@@ -174,6 +189,13 @@ bool acom_receiveCom()
   }
 }
 
+//void tcaselect(uint8_t i) {
+//  if (i > 7) return;
+// 
+//  Wire.beginTransmission(TCAADDR);
+//  Wire.write(1 << i);
+//  Wire.endTransmission();  
+//}
 void loop()
 {
   digitalWrite(13, HIGH);
