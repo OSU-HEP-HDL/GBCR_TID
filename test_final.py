@@ -1,4 +1,6 @@
-import serial, time
+import serial, time,  inputimeout, datetime, influxdb_client
+
+from influxdb_client.client.write_api import SYNCHRONOUS
 
 usbPort = "/dev/ttyACM1"
 arduino = serial.Serial(port=usbPort, baudrate=115200, timeout=5)
@@ -19,39 +21,55 @@ sessionMap = { ps1: { muxCh6: [0x23], muxCh5: [0x22]},
 
 r_sense = 0.1
 currentData = ""
+url, token, org = "", "", ""
 
-def calculateCurrents():
-    global currentData
+def getFileName(saveFiles, thisPS):
+    fileName = str(hex(thisPS))+"_"
+    fileSaved = False
+    for thisFile in saveFiles:
+        if(fileName in thisFile):
+            fileName = thisFile
+            fileSaved = True
+    if(not fileSaved):
+        thisDate = datetime.date.today().strftime('%Y%m%d')+".txt"
+        fileName+=thisDate
+        saveFiles.append(fileName)
 
-    currents = []
-    modData = currentData.replace("Data: ", "")
-    splitData = modData.split(', ')
-    for thisCount in splitData:
-        splitData = thisCount.split("_")
+    return fileName
+
+
+# def calculateCurrents():
+#     global currentData
+
+#     currents = []
+#     modData = currentData.replace("Data: ", "")
+#     splitData = modData.split(', ')
+#     for thisCount in splitData:
+#         splitData = thisCount.split("_")
         
-        fullData = splitData[0].zfill(8)+splitData[1].zfill(8)
+#         fullData = splitData[0].zfill(8)+splitData[1].zfill(8)
 
-        newData = int(fullData[0])
-        # if(newData!=1):
-        #     continue
-        sign = int(fullData[1])
+#         newData = int(fullData[0])
+#         # if(newData!=1):
+#         #     continue
+#         sign = int(fullData[1])
         
-        count = fullData[2:]
-        total = 0
-        print(fullData)
-        maxBit = len(count)
-        for i in range(maxBit):
-            if(count[i]=="1"):
-                total += 2**(maxBit-1-i)
+#         count = fullData[2:]
+#         total = 0
+#         print(fullData)
+#         maxBit = len(count)
+#         for i in range(maxBit):
+#             if(count[i]=="1"):
+#                 total += 2**(maxBit-1-i)
 
-        current = 0
-        if(sign==0):
-            current=(total*(19.075*1e-6))/r_sense
-        if(sign==1):
-            current=((total+1)*(-19.075*1e-6))/r_sense
+#         current = 0
+#         if(sign==0):
+#             current=(total*(19.075*1e-6))/r_sense
+#         if(sign==1):
+#             current=((total+1)*(-19.075*1e-6))/r_sense
 
-        currents.append(current)
-    return currents
+#         currents.append(current)
+#     return currents
             
     #     if(len(splitData))
     #     if(len(thisCount)!=8):
@@ -97,6 +115,72 @@ def receiveCurrents():
         print(f"ACom: {thisVal}")
         if(thisVal == "CDone"):
             currentsDone = True
+
+def recordCurrents(currents, thisPS):
+    global url, token, org
+    
+    outName = "Currents_"+str(hex(thisPS))+".txt"
+    outFile = open(outName,'a+')
+    writeString = "Time = "+datetime.datetime.now().strftime('%H.%M.%S')+" "
+
+    client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
+    write_api = client.write_api(write_options = SYNCHRONOUS)
+
+    for iC, thisCurrent in enumerate(currents):
+        iString = "I"+str(iC+1)
+        writeString+=iString+" = "+str(thisCurrent)+" "
+
+        psString = str(hex(thisPS))
+        p = influxdb_client.Point("Currents").tag("location", psString).field(iString, thisCurrent)
+        write_api.write(bucket="testTID", org=org, record=p)
+
+    writeString+="\n"
+    outFile.write(writeString)
+    outFile.close()
+
+def recordIfWritten(chipWritten):
+    outFile = open("chipsWritten.txt", 'a+')
+
+    client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
+    write_api = client.write_api(write_options = SYNCHRONOUS)
+
+    writeString = ""
+    for thisChip in chipWritten.keys():
+        splitChip = thisChip.split('_')
+        loc = "Spot "+splitChip[0]
+        isWritten = 0
+        writeString+=thisChip+" = "
+        if(chipWritten[thisChip]):
+            writeString+="1 "
+            isWritten = 1
+        else:
+            writeString+="0 "
+
+        p = influxdb_client.Point("Chips Written").tag("location", loc).field(splitChip[1], isWritten)
+        write_api.write(bucket="testTID", org=org, record=p)
+
+    writeString+="\n"
+
+    outFile.write(writeString)
+    outFile.close()
+
+def readENV():
+    global url, token, org
+
+    inFile = open(".env", 'r')
+    allLines = inFile.readlines()
+    inFile.close()
+
+    for thisLine in allLines:
+        splitLine = thisLine.split(" = ")
+        if(splitLine[0]=="url"):
+            url = splitLine[-1].strip()
+        elif(splitLine[0]=="token"):
+            token = splitLine[-1].strip()
+        elif(splitLine[0]=="org"):
+            org = splitLine[-1].strip()
+        else:
+            print("Option not available")
             
 def sendCom(comCode=-1, comDest=-1, directMessage = ""):
     time.sleep(1) #Give a 1 second buffer for arduino to get into correct state
@@ -160,15 +244,33 @@ def runPS(thisPS):
 
 def runStudy():
     sessionPSlist = sessionMap.keys()
-    for iP, thisPS in enumerate(sessionPSlist):
-        # if(iP>0):
-        #     arduino.close()
-        #     exit()
+    count = 1
+    endSession = ""
+    waitTime = 300
+
+    while(endSession!="y"):
+        if( (count>3) and (waitTime == 300)):
+            waitTime = 1200    
+        for iP, thisPS in enumerate(sessionPSlist):
+            # if(iP>0):
+            #     arduino.close()
+            #     exit()
             
-        runPS(thisPS)
+            runPS(thisPS)
+            recordCurrents(currentData, thisPS)
+
+        try:
+            ansTime = waitTime - 5
+            endSession = inputimeout.inputimeout(prompt = "End Session (Y/N): ", timeout = ansTime).lower()
+        except:
+            endSession="n"
+        count+=1
+        if(endSession!="y"):
+            time.sleep(5)
     
 if __name__ == "__main__":
     #testSend()
+    readENV()
     runStudy()
     arduino.close()
 
