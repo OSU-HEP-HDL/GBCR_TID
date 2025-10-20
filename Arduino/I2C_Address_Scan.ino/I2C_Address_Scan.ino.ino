@@ -8,13 +8,23 @@
 #include "Wire.h"
 
 #define TCAADDR 0x70
+int status;
 
 void tcaselect(uint8_t i) {
   if (i > 7) return;
+
+  digitalWrite(13, LOW);
+  delay(100);
+  digitalWrite(13, HIGH);
  
   Wire.beginTransmission(TCAADDR);
-  Wire.write(1 << i);
-  Wire.endTransmission();  
+  int bit =1 <<i;
+  Serial.print("Mux Bit: ");
+  Serial.println(bit,HEX);
+  Wire.write(bit);
+  Serial.print("TCA Return Code: ");
+  Serial.println(Wire.endTransmission()); 
+  delay(1000); 
 }
 
 
@@ -29,6 +39,11 @@ void setup()
     Serial.begin(115200);
     Serial.println("\nTCAScanner ready!");
     
+}
+
+void loop() 
+{
+    
     for (uint8_t t=0; t<8; t++) {
       tcaselect(t);
       Serial.print("TCA Port #"); Serial.println(t);
@@ -37,14 +52,22 @@ void setup()
         if (addr == TCAADDR) continue;
 
         Wire.beginTransmission(addr);
-        if (!Wire.endTransmission()) {
+        status = Wire.endTransmission();
+        
+        if(!status) {
           Serial.print("Found I2C 0x");  Serial.println(addr,HEX);
         }
+        else
+        {
+//          Serial.print("I2C Error ");
+//          Serial.print(status);
+//          Serial.print(" on address: ");
+//          Serial.println(addr);
+        }
       }
+      Serial.print("Mux Address: ");
+      Serial.print(t);
+      Serial.println(" Complete");
     }
     Serial.println("\ndone");
-}
-
-void loop() 
-{
 }
